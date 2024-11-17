@@ -116,7 +116,37 @@ print_board :-
     board(Board),
     nl,
     print_rows(Board).
+% Initialisation du plateau
+init_board :-
+    % Code pour initialiser le plateau
+    write('Plateau initialisé.'), nl.
 
+% Affichage du plateau
+print_board :-
+    % Code pour afficher le plateau
+    write('Affichage du plateau.'), nl.
+
+% Mouvement d'un pion
+move_pawn(From, To) :-
+    % Code pour déplacer un pion
+    write('Déplacement de '), write(From), write(' à '), write(To), nl.
+
+% Vérification de la victoire
+check_win(Player) :-
+    % Code pour vérifier si le joueur a gagné
+    write(Player), write(' a gagné !'), nl.
+
+% Gestion du jeu
+play :-
+    init_board,
+    print_board,
+    % Boucle de jeu ici
+    write('C\'est au tour du joueur.'), nl,
+    % Demander un mouvement
+    read(Move),
+    call(Move),  % Exécute le mouvement
+    check_win('Joueur 1'),  % Vérifie si le joueur 1 a gagné
+    play.  % Continue le jeu
 print_rows([]).
 print_rows([Row|Rest]) :-
     print_row(Row),
