@@ -336,6 +336,33 @@ class Board:
             return self.board[x, y].squarePawn.circularPawn
         return None
 
+    def getValidCircularMoves(self, x: int, y: int):
+        valid_moves = []
+        # Example logic: a valid tile must have a square pawn & no circular pawn
+        for i in range(3):
+            for j in range(3):
+                tile = self.board[i][j]
+                if tile.isSquarePawnSet() and not tile.isCircularPawnSet() and not (i == x and j == y):
+                    valid_moves.append((i, j))
+        return valid_moves
+
+    def getValidSquareMoves(self, x: int, y: int):
+        # Return all valid positions where the square at (x, y) can move
+        valid_moves = []
+        if not self.board[x][y].isSquarePawnSet():
+            return valid_moves
+        # We'll just check if the empty tile is a valid neighbor
+        emptyX, emptyY = self.emptyTile.x, self.emptyTile.y
+        # Duplicate the adjacency checks in moveSquarePawn
+        # If moveSquarePawn would return 0, then it's a valid move
+        temp = self.moveSquarePawn(x, y)
+        if temp == 0:
+            valid_moves.append((emptyX, emptyY))
+            # Undo the move to avoid changing state
+            self.moveSquarePawn(emptyX, emptyY)
+        else:
+            self.moveSquarePawn(x, y)
+        return valid_moves
 
 # Méthode pour obtenir l'état actuel du plateau
     def get_board_state(self):
