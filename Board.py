@@ -101,6 +101,10 @@ class Board:
         previousTile.setCircularPawn(None)
         nextTile.setCircularPawn(circularPawn)
 
+        # Update the pawn’s coordinates so the GUI recognizes the new position:
+        pawn.x = nextX
+        pawn.y = nextY
+
         return 0
 
     """
