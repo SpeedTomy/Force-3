@@ -351,22 +351,26 @@ class Board:
         return valid_moves
 
     def getValidSquareMoves(self, x: int, y: int):
-        # Return all valid positions where the square at (x, y) can move
         valid_moves = []
         if not self.board[x][y].isSquarePawnSet():
             return valid_moves
-        # We'll just check if the empty tile is a valid neighbor
-        emptyX, emptyY = self.emptyTile.x, self.emptyTile.y
-        # Duplicate the adjacency checks in moveSquarePawn
-        # If moveSquarePawn would return 0, then it's a valid move
-        temp = self.moveSquarePawn(x, y)
-        if temp == 0:
-            valid_moves.append((emptyX, emptyY))
-            # Undo the move to avoid changing state
-            self.moveSquarePawn(emptyX, emptyY)
-        else:
-            self.moveSquarePawn(x, y)
+        import copy
+        tempBoard = copy.deepcopy(self)
+        if tempBoard.moveSquarePawn(x, y) == 0:
+            valid_moves.append((tempBoard.emptyTile.x, tempBoard.emptyTile.y))
         return valid_moves
+
+    def getAllMovableSquares(self) -> list:
+        squares = []
+        import copy
+        for i in range(3):
+            for j in range(3):
+                tile = self.board[i][j]
+                if tile.isSquarePawnSet() and not tile.isCircularPawnSet():
+                    tempBoard = copy.deepcopy(self)
+                    if tempBoard.moveSquarePawn(i, j) == 0:
+                        squares.append((i, j))
+        return squares
 
 # Méthode pour obtenir l'état actuel du plateau
     def get_board_state(self):
