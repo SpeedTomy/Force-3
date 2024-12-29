@@ -125,8 +125,12 @@ class Board:
                 self.twoSquarePawnsMoved = None
                 self.squarePawnMoved = [tile, self.emptyTile]
                 squarePawn = tile.getSquarePawn()
+                circularPawn = tile.getCircularPawn() if tile.isCircularPawnSet() else None
                 tile.setSquarePawn(None)
                 self.emptyTile.setSquarePawn(squarePawn)
+                if circularPawn:
+                    self.emptyTile.setCircularPawn(circularPawn)
+                    circularPawn.x, circularPawn.y = self.emptyTile.x, self.emptyTile.y
                 self.emptyTile = tile
                 return 0
             else:
@@ -136,9 +140,14 @@ class Board:
                 self.twoSquarePawnsMoved = None
                 self.squarePawnMoved = [tile, self.emptyTile]
                 squarePawn = tile.getSquarePawn()
+                circularPawn = tile.getCircularPawn() if tile.isCircularPawnSet() else None
                 tile.setSquarePawn(None)
                 self.emptyTile.setSquarePawn(squarePawn)
+                if circularPawn:
+                    self.emptyTile.setCircularPawn(circularPawn)
+                    circularPawn.x, circularPawn.y = self.emptyTile.x, self.emptyTile.y
                 self.emptyTile = tile
+                return 0
             else:
                 return -2
         elif(self.emptyTile.idTile == 3):
@@ -146,8 +155,12 @@ class Board:
                 self.twoSquarePawnsMoved = None
                 self.squarePawnMoved = [tile, self.emptyTile]
                 squarePawn = tile.getSquarePawn()
+                circularPawn = tile.getCircularPawn() if tile.isCircularPawnSet() else None
                 tile.setSquarePawn(None)
                 self.emptyTile.setSquarePawn(squarePawn)
+                if circularPawn:
+                    self.emptyTile.setCircularPawn(circularPawn)
+                    circularPawn.x, circularPawn.y = self.emptyTile.x, self.emptyTile.y
                 self.emptyTile = tile
                 return 0
             else:
@@ -157,8 +170,12 @@ class Board:
                 self.twoSquarePawnsMoved = None
                 self.squarePawnMoved = [tile, self.emptyTile]
                 squarePawn = tile.getSquarePawn()
+                circularPawn = tile.getCircularPawn() if tile.isCircularPawnSet() else None
                 tile.setSquarePawn(None)
                 self.emptyTile.setSquarePawn(squarePawn)
+                if circularPawn:
+                    self.emptyTile.setCircularPawn(circularPawn)
+                    circularPawn.x, circularPawn.y = self.emptyTile.x, self.emptyTile.y
                 self.emptyTile = tile
                 return 0
             else:
@@ -168,8 +185,12 @@ class Board:
                 self.twoSquarePawnsMoved = None
                 self.squarePawnMoved = [tile, self.emptyTile]
                 squarePawn = tile.getSquarePawn()
+                circularPawn = tile.getCircularPawn() if tile.isCircularPawnSet() else None
                 tile.setSquarePawn(None)
                 self.emptyTile.setSquarePawn(squarePawn)
+                if circularPawn:
+                    self.emptyTile.setCircularPawn(circularPawn)
+                    circularPawn.x, circularPawn.y = self.emptyTile.x, self.emptyTile.y
                 self.emptyTile = tile
                 return 0
             else:
@@ -179,8 +200,12 @@ class Board:
                 self.twoSquarePawnsMoved = None
                 self.squarePawnMoved = [tile, self.emptyTile]
                 squarePawn = tile.getSquarePawn()
+                circularPawn = tile.getCircularPawn() if tile.isCircularPawnSet() else None
                 tile.setSquarePawn(None)
                 self.emptyTile.setSquarePawn(squarePawn)
+                if circularPawn:
+                    self.emptyTile.setCircularPawn(circularPawn)
+                    circularPawn.x, circularPawn.y = self.emptyTile.x, self.emptyTile.y
                 self.emptyTile = tile
                 return 0
             else:
@@ -190,8 +215,12 @@ class Board:
                 self.twoSquarePawnsMoved = None
                 self.squarePawnMoved = [tile, self.emptyTile]
                 squarePawn = tile.getSquarePawn()
+                circularPawn = tile.getCircularPawn() if tile.isCircularPawnSet() else None
                 tile.setSquarePawn(None)
                 self.emptyTile.setSquarePawn(squarePawn)
+                if circularPawn:
+                    self.emptyTile.setCircularPawn(circularPawn)
+                    circularPawn.x, circularPawn.y = self.emptyTile.x, self.emptyTile.y
                 self.emptyTile = tile
                 return 0
             else:
@@ -201,14 +230,33 @@ class Board:
                 self.twoSquarePawnsMoved = None
                 self.squarePawnMoved = [tile, self.emptyTile]
                 squarePawn = tile.getSquarePawn()
+                circularPawn = tile.getCircularPawn() if tile.isCircularPawnSet() else None
                 tile.setSquarePawn(None)
                 self.emptyTile.setSquarePawn(squarePawn)
+                if circularPawn:
+                    self.emptyTile.setCircularPawn(circularPawn)
+                    circularPawn.x, circularPawn.y = self.emptyTile.x, self.emptyTile.y
                 self.emptyTile = tile
                 return 0
             else:
                 return -2
-        else:
+        elif(self.emptyTile.idTile == 9):
             if(self.board[x][y].idTile in {6, 8}):
+                self.twoSquarePawnsMoved = None
+                self.squarePawnMoved = [tile, self.emptyTile]
+                squarePawn = tile.getSquarePawn()
+                circularPawn = tile.getCircularPawn() if tile.isCircularPawnSet() else None
+                tile.setSquarePawn(None)
+                self.emptyTile.setSquarePawn(squarePawn)
+                if circularPawn:
+                    self.emptyTile.setCircularPawn(circularPawn)
+                    circularPawn.x, circularPawn.y = self.emptyTile.x, self.emptyTile.y
+                self.emptyTile = tile
+                return 0
+            else:
+                return -2
+        elif(self.emptyTile.idTile == 10):  # Ajout de la condition pour la position (0, 1)
+            if(self.board[x][y].idTile in {1, 2, 3, 5}):
                 self.twoSquarePawnsMoved = None
                 self.squarePawnMoved = [tile, self.emptyTile]
                 squarePawn = tile.getSquarePawn()
@@ -362,11 +410,10 @@ class Board:
 
     def getAllMovableSquares(self) -> list:
         squares = []
-        import copy
         for i in range(3):
             for j in range(3):
                 tile = self.board[i][j]
-                if tile.isSquarePawnSet() and not tile.isCircularPawnSet():
+                if tile.isSquarePawnSet():
                     tempBoard = copy.deepcopy(self)
                     if tempBoard.moveSquarePawn(i, j) == 0:
                         squares.append((i, j))
@@ -381,12 +428,12 @@ class Board:
                 tile = self.board[i][j]
                 if not tile.isSquarePawnSet():
                     row.append("empty")
-                elif tile.isCircularPawnSet():
+                elif tile.isCircularPawnSet():                   
                     pawn = tile.getCircularPawn()
                     if pawn.color:
                         row.append("white")
                     else:
-                        row.append("black")
+                        row.append("black")              
                 else:
                     row.append("square")
             state.append(row)

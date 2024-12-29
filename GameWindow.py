@@ -335,6 +335,8 @@ class GameWindow(QMainWindow):
                 btn.setText("⚫")
             elif state[x][y] == "square":
                 btn.setText("▢")
+            elif state[x][y] == "square_with_pawn":
+                btn.setText("▢⚪" if self.board._get_circularPawn_by_board(x, y).color else "▢⚫")
         if self.board.isMove2SquarePawnsPossible():
             self.move_two_squares_button.show()
         else:
