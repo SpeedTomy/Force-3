@@ -225,15 +225,23 @@ class GameWindow(QMainWindow):
                     self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
             else:
                 QMessageBox.warning(self, "Erreur", "Déplacement de carré invalide !")
+                self.update_board()
             return
         elif self.selected_action == "Déplacer 2 carrés":
             tile = self.board._get_board_by_coordinate(x, y)
             if tile.isSquarePawnSet() and not tile.isCircularPawnSet():
                 self.selected_squares.append((x, y))
-                QMessageBox.information(self, "Info", f"Carré sélectionné: ({x},{y})")
-                # Wait until we have two squares selected
-                if len(self.selected_squares) == 2:
-                    # Attempt the move
+                if len(self.selected_squares) == 1:
+                    self.clear_highlight()
+                    first_btn = self.buttons[(x, y)]
+                    first_btn.setStyleSheet("background-color: yellow;")
+                    # Highlight all other movable squares in green
+                    possible_second_moves = self.board.getAllMovableSquares()
+                    if (x, y) in possible_second_moves:
+                        possible_second_moves.remove((x, y))
+                    for (xx, yy) in possible_second_moves:
+                        self.buttons[(xx, yy)].setStyleSheet("background-color: green;")
+                elif len(self.selected_squares) == 2:
                     sx = [self.selected_squares[0][0], self.selected_squares[1][0]]
                     sy = [self.selected_squares[0][1], self.selected_squares[1][1]]
                     result = self.board.move2SquarePawns(sx, sy)
@@ -242,17 +250,10 @@ class GameWindow(QMainWindow):
                         self.clear_highlight()
                         self.selected_action = None
                         self.update_action_buttons()
-                        self.selected_squares.clear()
-                        # Check winner
-                        if self.board.checkIfWinner() != -1:
-                            QMessageBox.information(self, "Victoire", f"Joueur {self.current_player + 1} a gagné !")
-                            self.reset_game()
-                        else:
-                            self.current_player = 1 - self.current_player
-                            self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
                     else:
-                        QMessageBox.warning(self, "Erreur", "Déplacement de 2 carrés invalide !")
-                        self.selected_squares.clear()
+                        QMessageBox.warning(self, "Erreur",
+                                            "Déplacement de 2 carrés invalide ! Vérifiez la fonction move2SquarePawns.")
+                    self.selected_squares.clear()
             else:
                 QMessageBox.information(self, "Info", "Veuillez sélectionner un carré vide.")
             return
@@ -334,6 +335,10 @@ class GameWindow(QMainWindow):
                 btn.setText("⚫")
             elif state[x][y] == "square":
                 btn.setText("▢")
+        if self.board.isMove2SquarePawnsPossible():
+            self.move_two_squares_button.show()
+        else:
+            self.move_two_squares_button.hide()
 
 class ModeSelectionDialog(QDialog):
     def __init__(self):
