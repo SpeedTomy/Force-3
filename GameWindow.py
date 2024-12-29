@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QGridLayout, QPushButton, QWidget, QMessageBox, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QDialog, QDialogButtonBox, QInputDialog
-from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtCore import QSize, Qt, QTimer
+from Main import IAChoices
 
 class GameWindow(QMainWindow):
     def __init__(self, board, mode):
@@ -16,6 +17,14 @@ class GameWindow(QMainWindow):
         self.move_pawn_button = None
         self.move_square_button = None
         self.initUI()
+
+        if self.mode == 1:  # Player vs IA
+            self.ia_player = 1
+        elif self.mode == 2:  # IA vs IA
+            self.ia_player = 0
+            self.ia_vs_ia_timer = QTimer(self)
+            self.ia_vs_ia_timer.timeout.connect(self.ia_vs_ia_step)
+            self.ia_vs_ia_timer.start(1000)  # Step every second
 
     def initUI(self):
         self.setWindowTitle("Force 3")
@@ -63,12 +72,22 @@ class GameWindow(QMainWindow):
         self.move_square_button.hide()
         self.move_two_squares_button.hide()  # Hide by default
 
+        # Show place pawn button only for Player vs Player and Player vs IA modes
+        if self.mode in [0, 1]:
+            self.place_pawn_button.show()
+        else:
+            self.place_pawn_button.hide()
+
         self.action_buttons_layout.addWidget(self.place_pawn_button)
         self.action_buttons_layout.addWidget(self.move_pawn_button)
         self.action_buttons_layout.addWidget(self.move_square_button)
         self.action_buttons_layout.addWidget(self.move_two_squares_button)
 
         main_layout.addLayout(self.action_buttons_layout)
+
+        if self.mode == 2:  # IA vs IA
+            self.next_step_button = QPushButton("Next Step")
+            self.next_step_button.clicked.connect(self.ia_vs_ia_step)
 
     def get_player_color(self):
         return "Blanc" if self.current_player == 0 else "Noir"
@@ -144,7 +163,10 @@ class GameWindow(QMainWindow):
             if action_success:
                 self.update_board()
                 # Show move buttons once both players have at least one pawn
-                if all(len(p.pawns) >= 1 for p in self.board.players):
+                if self.mode == 0 and all(len(p.pawns) >= 1 for p in self.board.players):
+                    self.move_pawn_button.show()
+                    self.move_square_button.show()
+                elif self.mode == 1 and len(self.board.players[self.current_player].pawns) >= 1:
                     self.move_pawn_button.show()
                     self.move_square_button.show()
                 # Hide "Placer un pion" if both players have 3
@@ -162,16 +184,16 @@ class GameWindow(QMainWindow):
                     # Change de joueur
                     self.current_player = 1 - self.current_player
                     self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
+                    if self.mode == 1 and self.current_player == self.ia_player:
+                        self.ia_play()
             return
         elif self.selected_action == "Déplacer un pion":
             if self.selected_pawn is None:
                 # First click: select the pawn
-                # Remove or rename this message so it doesn't wrongly appear:
                 if any(pawn.x == x and pawn.y == y for pawn in self.board.players[self.current_player].pawns):
                     self.selected_pawn = (x, y)
                     self.highlight_possible_moves(x, y)
                 else:
-                    # ...example change:
                     QMessageBox.information(self, "Info", "Cette case ne contient pas votre pion.")
                 return
             else:
@@ -197,8 +219,9 @@ class GameWindow(QMainWindow):
                         # Change de joueur
                         self.current_player = 1 - self.current_player
                         self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
+                        if self.mode == 1 and self.current_player == self.ia_player:
+                            self.ia_play()
                 else:
-                    # Only show a warning here if it's truly invalid
                     QMessageBox.warning(self, "Erreur", "Déplacement invalide !")
                     self.clear_highlight()
                     self.selected_pawn = None
@@ -223,13 +246,15 @@ class GameWindow(QMainWindow):
                 else:
                     self.current_player = 1 - self.current_player
                     self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
+                    if self.mode == 1 and self.current_player == self.ia_player:
+                        self.ia_play()
             else:
                 QMessageBox.warning(self, "Erreur", "Déplacement de carré invalide !")
                 self.update_board()
             return
         elif self.selected_action == "Déplacer 2 carrés":
             tile = self.board._get_board_by_coordinate(x, y)
-            if tile.isSquarePawnSet() and not tile.isCircularPawnSet():
+            if tile.isSquarePawnSet():
                 self.selected_squares.append((x, y))
                 if len(self.selected_squares) == 1:
                     self.clear_highlight()
@@ -250,12 +275,21 @@ class GameWindow(QMainWindow):
                         self.clear_highlight()
                         self.selected_action = None
                         self.update_action_buttons()
+                        # Check winner
+                        winner = self.board.checkIfWinner()
+                        if winner != -1:
+                            QMessageBox.information(self, "Victoire", f"Joueur {winner + 1} a gagné !")
+                            self.reset_game()
+                        else:
+                            self.current_player = 1 - self.current_player
+                            self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
+                            if self.mode == 1 and self.current_player == self.ia_player:
+                                self.ia_play()
                     else:
-                        QMessageBox.warning(self, "Erreur",
-                                            "Déplacement de 2 carrés invalide ! Vérifiez la fonction move2SquarePawns.")
+                        QMessageBox.warning(self, "Erreur", "Déplacement de 2 carrés invalide ! Vérifiez la fonction move2SquarePawns.")
                     self.selected_squares.clear()
             else:
-                QMessageBox.information(self, "Info", "Veuillez sélectionner un carré vide.")
+                QMessageBox.information(self, "Info", "Veuillez sélectionner un carré.")
             return
 
         # Si une action est effectuée, met à jour le plateau
@@ -280,6 +314,31 @@ class GameWindow(QMainWindow):
                 self.reset_game()
             else:
                 # Change de joueur
+                self.current_player = 1 - self.current_player
+                self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
+
+    def ia_play(self):
+        IAChoices(self.board.players[self.current_player], self.board.players[1 - self.current_player], self.board)
+        self.update_board()
+        winner = self.board.checkIfWinner()
+        if winner != -1:
+            QMessageBox.information(self, "Victoire", f"Joueur {winner + 1} a gagné !")
+            self.reset_game()
+        else:
+            self.current_player = 1 - self.current_player
+            self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
+            if self.mode == 1 and self.current_player == self.ia_player:
+                self.ia_play()
+
+    def ia_vs_ia_step(self):
+        if self.board.checkIfWinner() == -1:
+            IAChoices(self.board.players[self.current_player], self.board.players[1 - self.current_player], self.board)
+            self.update_board()
+            winner = self.board.checkIfWinner()
+            if winner != -1:
+                QMessageBox.information(self, "Victoire", f"Joueur {winner + 1} a gagné !")
+                self.reset_game()
+            else:
                 self.current_player = 1 - self.current_player
                 self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
 
@@ -335,12 +394,23 @@ class GameWindow(QMainWindow):
                 btn.setText("⚫")
             elif state[x][y] == "square":
                 btn.setText("▢")
-            elif state[x][y] == "square_with_pawn":
-                btn.setText("▢⚪" if self.board._get_circularPawn_by_board(x, y).color else "▢⚫")
         if self.board.isMove2SquarePawnsPossible():
             self.move_two_squares_button.show()
         else:
             self.move_two_squares_button.hide()
+        # Ensure buttons visibility based on mode and player actions
+        if self.mode == 0:  # Player vs Player
+            if all(len(p.pawns) >= 1 for p in self.board.players):
+                self.move_pawn_button.show()
+                self.move_square_button.show()
+            if all(len(p.pawns) >= 3 for p in self.board.players):
+                self.place_pawn_button.hide()
+        elif self.mode == 1:  # Player vs IA
+            if len(self.board.players[0].pawns) >= 1:
+                self.move_pawn_button.show()
+                self.move_square_button.show()
+            if len(self.board.players[0].pawns) >= 3:
+                self.place_pawn_button.hide()
 
 class ModeSelectionDialog(QDialog):
     def __init__(self):
