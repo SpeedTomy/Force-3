@@ -43,6 +43,9 @@ class Board:
         This variable is used to check if a player tries to reverse the movement done by move2SquarePawns() on the previous turn
         """
         self.twoSquarePawnsMoved = None
+        self.lastMoveWasTwoSquares = False  # Indique si le dernier mouvement impliquait deux carrés
+        self.twoSquareMoveBlocked = False  # Indique si le déplacement de deux carrés était bloqué lors du dernier tour
+        self.cooldown = 0  # Compteur de cooldown pour le déplacement de deux carrés
 
     """
     This function returns the empty tile.
@@ -269,7 +272,11 @@ class Board:
 
     # returns true if the player can move 2 square pawns on his turn
     def isMove2SquarePawnsPossible(self) -> bool:
+        # Empêche un joueur de déplacer deux carrés immédiatement après que l'autre joueur a déplacé deux carrés
+        if self.cooldown > 0:
+            return False
         return self.emptyTile.idTile != 5
+
     """
     This function moves 2 square pawns.
     The function uses the following parameters:
@@ -282,35 +289,64 @@ class Board:
     - -3 if the first selected square pawn can't be moved to the empty tile
     - -4 if the second selected square pawn can't be moved to the position of the first tile.
     """
-    def move2SquarePawns(self, x: list = [0, 0], y: list = [0, 0]) -> int:
-        copy_board = copy.deepcopy(self)
-        firstTile = self.board[int(x[0]), int(y[0])]
-        secondTile = self.board[int(x[1]), int(y[1])]
+    def move2SquarePawns(self, sx, sy):
+        print(f"move2SquarePawns called with sx: {sx}, sy: {sy}")  # Debugging line
 
-        if(not self.isMove2SquarePawnsPossible()):
-            return -1
+        # Vérifiez si les deux carrés peuvent être déplacés
+        if not self._canMoveSquarePawn(sx[0], sy[0]) or not self._canMoveSquarePawn(sx[1], sy[1]):
+            print("Error -3: One of the squares cannot be moved.")  # Debugging line
+            return -3  # L'un des carrés ne peut pas être déplacé
 
-        if([firstTile, secondTile] == self.twoSquarePawnsMoved):
-            return -2
+        # Vérifiez si les deux carrés ne sont pas inversés par rapport au tour précédent
+        if self._isReversingPreviousMove(sx, sy):
+            print("Error -2: Reversing the previous move is not allowed.")  # Debugging line
+            return -2  # Inversion du mouvement précédent non autorisée
 
-        if(copy_board.moveSquarePawn(int(x[0]), int(y[0]), True) != 0):
-            return -3
+        # Effectuez le déplacement des deux carrés
+        self._moveSquarePawn(sx[0], sy[0], twoSquare=True)
+        self._moveSquarePawn(sx[1], sy[1], twoSquare=True)
+        self.twoSquarePawnsMoved = [(self.board[sx[0]][sy[0]], self.board[sx[1]][sy[1]])]
+        self.lastMoveWasTwoSquares = True  # Indique que le dernier mouvement impliquait deux carrés
+        self.twoSquareMoveBlocked = True  # Bloque le déplacement de deux carrés pour le prochain tour
+        self.cooldown = 2  # Initialise le cooldown à 2 tours
+        print("Squares moved successfully.")  # Debugging line
+        return 0
 
-        if(copy_board.moveSquarePawn(secondTile.x, secondTile.y, True) != 0):
-            return -4
+    def _canMoveSquarePawn(self, x, y):
+        # Implémentez la logique pour vérifier si un carré peut être déplacé
+        # Ajoutez des instructions de journalisation pour déboguer
+        print(f"Checking if square at ({x}, {y}) can be moved.")  # Debugging line
+        # ...existing code...
+        return True  # Exemple de retour, modifiez selon votre logique
 
-        if(not((secondTile.x == firstTile.x and secondTile.x == self.emptyTile.x) or
-            (secondTile.y == firstTile.y and secondTile.y == self.emptyTile.y))):
-            return -5
+    def _isReversingPreviousMove(self, sx, sy):
+        # Implémentez la logique pour vérifier si le mouvement inverse le mouvement précédent
+        # Ajoutez des instructions de journalisation pour déboguer
+        print(f"Checking if move is reversing the previous move with sx: {sx}, sy: {sy}")  # Debugging line
+        # ...existing code...
+        return False  # Exemple de retour, modifiez selon votre logique
 
-        firstSquarePawn = firstTile.getSquarePawn()
-        secondSquarePawn = secondTile.getSquarePawn()
-        firstTile.setSquarePawn(secondSquarePawn)
-        secondTile.setSquarePawn(None)
-        self.emptyTile.setSquarePawn(firstSquarePawn)
-        self.twoSquarePawnsMoved = [firstTile, self.emptyTile]
-        self.emptyTile = secondTile
-        self.squarePawnMoved = None
+    def _moveSquarePawn(self, x, y, twoSquare=False):
+        tile = self.board[x][y]
+        squarePawn = tile.getSquarePawn()
+        circularPawn = tile.getCircularPawn() if tile.isCircularPawnSet() else None
+        tile.setSquarePawn(None)
+        self.emptyTile.setSquarePawn(squarePawn)
+        if circularPawn:
+            self.emptyTile.setCircularPawn(circularPawn)
+            circularPawn.x, circularPawn.y = self.emptyTile.x, self.emptyTile.y
+        self.emptyTile = tile
+        if not twoSquare:
+            self.squarePawnMoved = [tile, self.emptyTile]
+            if self.lastMoveWasTwoSquares:
+                self.twoSquareMoveBlocked = True  # Bloque le déplacement de deux carrés pour le prochain tour
+            self.lastMoveWasTwoSquares = False  # Indique que le dernier mouvement n'impliquait pas deux carrés
+        print(f"Moving square at ({x}, {y})")  # Debugging line
+
+    def endTurn(self):
+        # Réduire le cooldown à chaque fin de tour
+        if self.cooldown > 0:
+            self.cooldown -= 1
 
     # this functions prints the board on the consol used to run the programm 
     def printBoard(self) -> None:

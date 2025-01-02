@@ -3,11 +3,12 @@ from PyQt5.QtCore import QSize, Qt, QTimer
 from Main import IAChoices
 
 class GameWindow(QMainWindow):
-    def __init__(self, board, mode):
+    def __init__(self, board, mode, player_color):
         super().__init__()
         self.board = board  # Plateau de jeu
-        self.current_player = 0  # Joueur actuel (0 ou 1)
+        self.current_player = 0 if player_color == "Blanc" else 1  # Joueur actuel (0 ou 1)
         self.mode = mode  # Mode de jeu
+        self.ia_player = 1 if player_color == "Blanc" else 0  # IA joue en second si le joueur est blanc
         self.selected_action = None  # Action sélectionnée
         self.remaining_moves = 1  # Nombre de déplacements restants pour les carrés
         self.selected_pawn = None  # <-- added to track the selected pawn
@@ -16,15 +17,20 @@ class GameWindow(QMainWindow):
         self.place_pawn_button = None
         self.move_pawn_button = None
         self.move_square_button = None
+        self.back_to_menu_button = None  # Bouton pour revenir au menu
+        self.next_step_button = None  # Bouton pour avancer d'une étape en mode IA vs IA
         self.initUI()
 
-        if self.mode == 1:  # Player vs IA
-            self.ia_player = 1
-        elif self.mode == 2:  # IA vs IA
+        if self.mode == 2:  # IA vs IA
             self.ia_player = 0
-            self.ia_vs_ia_timer = QTimer(self)
-            self.ia_vs_ia_timer.timeout.connect(self.ia_vs_ia_step)
-            self.ia_vs_ia_timer.start(1000)  # Step every second
+            # Désactiver le timer pour permettre un contrôle manuel
+            # self.ia_vs_ia_timer = QTimer(self)
+            # self.ia_vs_ia_timer.timeout.connect(self.ia_vs_ia_step)
+            # self.ia_vs_ia_timer.start(1000)  # Step every second
+
+        # Si le joueur est noir, l'IA commence
+        if self.mode == 1 and self.current_player == self.ia_player:
+            self.ia_play()
 
     def initUI(self):
         self.setWindowTitle("Force 3")
@@ -81,13 +87,20 @@ class GameWindow(QMainWindow):
         self.action_buttons_layout.addWidget(self.place_pawn_button)
         self.action_buttons_layout.addWidget(self.move_pawn_button)
         self.action_buttons_layout.addWidget(self.move_square_button)
-        self.action_buttons_layout.addWidget(self.move_two_squares_button)
+        if self.mode != 2:  # Hide "Déplacer 2 carrés" button in IA vs IA mode
+            self.action_buttons_layout.addWidget(self.move_two_squares_button)
 
         main_layout.addLayout(self.action_buttons_layout)
 
         if self.mode == 2:  # IA vs IA
             self.next_step_button = QPushButton("Next Step")
             self.next_step_button.clicked.connect(self.ia_vs_ia_step)
+            main_layout.addWidget(self.next_step_button)
+
+        # Bouton pour revenir au menu principal
+        self.back_to_menu_button = QPushButton("Retour au menu")
+        self.back_to_menu_button.clicked.connect(self.back_to_menu)
+        main_layout.addWidget(self.back_to_menu_button)
 
     def get_player_color(self):
         return "Blanc" if self.current_player == 0 else "Noir"
@@ -182,6 +195,7 @@ class GameWindow(QMainWindow):
                     self.reset_game()
                 else:
                     # Change de joueur
+                    self.board.endTurn()  # Réduire le cooldown à la fin du tour
                     self.current_player = 1 - self.current_player
                     self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
                     if self.mode == 1 and self.current_player == self.ia_player:
@@ -217,6 +231,7 @@ class GameWindow(QMainWindow):
                         self.reset_game()
                     else:
                         # Change de joueur
+                        self.board.endTurn()  # Réduire le cooldown à la fin du tour
                         self.current_player = 1 - self.current_player
                         self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
                         if self.mode == 1 and self.current_player == self.ia_player:
@@ -244,6 +259,7 @@ class GameWindow(QMainWindow):
                     QMessageBox.information(self, "Victoire", f"Joueur {winner + 1} a gagné !")
                     self.reset_game()
                 else:
+                    self.board.endTurn()  # Réduire le cooldown à la fin du tour
                     self.current_player = 1 - self.current_player
                     self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
                     if self.mode == 1 and self.current_player == self.ia_player:
@@ -269,7 +285,9 @@ class GameWindow(QMainWindow):
                 elif len(self.selected_squares) == 2:
                     sx = [self.selected_squares[0][0], self.selected_squares[1][0]]
                     sy = [self.selected_squares[0][1], self.selected_squares[1][1]]
+                    print(f"Trying to move squares: {sx}, {sy}")  # Debugging line
                     result = self.board.move2SquarePawns(sx, sy)
+                    print(f"Result of move2SquarePawns: {result}")  # Debugging line
                     if result == 0:
                         self.update_board()
                         self.clear_highlight()
@@ -281,12 +299,13 @@ class GameWindow(QMainWindow):
                             QMessageBox.information(self, "Victoire", f"Joueur {winner + 1} a gagné !")
                             self.reset_game()
                         else:
+                            self.board.endTurn()  # Réduire le cooldown à la fin du tour
                             self.current_player = 1 - self.current_player
                             self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
                             if self.mode == 1 and self.current_player == self.ia_player:
                                 self.ia_play()
                     else:
-                        QMessageBox.warning(self, "Erreur", "Déplacement de 2 carrés invalide ! Vérifiez la fonction move2SquarePawns.")
+                        QMessageBox.warning(self, "Erreur", f"Déplacement de 2 carrés invalide ! Vérifiez la fonction move2SquarePawns. Code d'erreur: {result}")
                     self.selected_squares.clear()
             else:
                 QMessageBox.information(self, "Info", "Veuillez sélectionner un carré.")
@@ -314,6 +333,7 @@ class GameWindow(QMainWindow):
                 self.reset_game()
             else:
                 # Change de joueur
+                self.board.endTurn()  # Réduire le cooldown à la fin du tour
                 self.current_player = 1 - self.current_player
                 self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
 
@@ -331,6 +351,9 @@ class GameWindow(QMainWindow):
                 self.ia_play()
 
     def ia_vs_ia_step(self):
+        """
+        Avance d'une étape en mode IA vs IA.
+        """
         if self.board.checkIfWinner() == -1:
             IAChoices(self.board.players[self.current_player], self.board.players[1 - self.current_player], self.board)
             self.update_board()
@@ -383,18 +406,29 @@ class GameWindow(QMainWindow):
         self.current_player = 0
         self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
 
+        # Réinitialise les boutons d'action
+        self.selected_action = None
+        self.update_action_buttons()
+        self.place_pawn_button.show()
+        self.move_pawn_button.hide()
+        self.move_square_button.hide()
+        self.move_two_squares_button.hide()
+
     def update_board(self):
         state = self.board.get_board_state()
         for (x, y), btn in self.buttons.items():
             if state[x][y] == "empty":
-                btn.setText("■")
+                btn.setText("✖")  # Croix rouge pour les tuiles vides
+                btn.setStyleSheet("color: red;")  # Couleur rouge pour la croix
             elif state[x][y] == "white":
                 btn.setText("⚪")
             elif state[x][y] == "black":
                 btn.setText("⚫")
             elif state[x][y] == "square":
-                btn.setText("▢")
-        if self.board.isMove2SquarePawnsPossible():
+                btn.setText("")  # Rien pour les carrés
+            else:
+                btn.setText(" ")  # Par défaut, texte vide
+        if self.mode != 2 and self.board.isMove2SquarePawnsPossible():  # Hide "Déplacer 2 carrés" button in IA vs IA mode
             self.move_two_squares_button.show()
         else:
             self.move_two_squares_button.hide()
@@ -412,6 +446,54 @@ class GameWindow(QMainWindow):
             if len(self.board.players[0].pawns) >= 3:
                 self.place_pawn_button.hide()
 
+    def back_to_menu(self):
+        """
+        Retourne au menu principal en redémarrant l'application.
+        """
+        self.close()
+        self.restart_application()
+
+    def restart_application(self):
+        """
+        Redémarre l'application pour revenir au menu principal.
+        """
+        import sys
+        from PyQt5.QtWidgets import QApplication
+
+        self.app = QApplication.instance()
+        if self.app is None:
+            self.app = QApplication(sys.argv)
+        self.dialog = ModeSelectionDialog()
+        if self.dialog.exec_() == QDialog.Accepted:
+            mode = self.dialog.get_selected_mode()
+
+            if mode == 1:  # Player vs IA
+                color_dialog = ColorSelectionDialog()
+                if color_dialog.exec_() == QDialog.Accepted:
+                    player_color = color_dialog.get_selected_color()
+                else:
+                    self.restart_application()  # Retourne au menu principal si l'utilisateur clique sur "Retour au menu"
+                    return
+            else:
+                player_color = "Blanc"  # Default color for other modes
+
+            player1 = Player(0, WHITE_PAWN)
+            player2 = Player(1, BLACK_PAWN)
+            board = Board(player1, player2)
+
+            self.window = GameWindow(board, mode, player_color)
+            self.window.show()
+            self.window.update_board()  # Mettre à jour le plateau dès le lancement du jeu
+        else:
+            self.restart_application()  # Retourne au menu principal si l'utilisateur clique sur "Quitter" dans la boîte de dialogue de sélection de mode
+
+    def quit_application(self):
+        """
+        Quitte l'application.
+        """
+        import sys
+        sys.exit()
+
 class ModeSelectionDialog(QDialog):
     def __init__(self):
         super().__init__()
@@ -427,7 +509,9 @@ class ModeSelectionDialog(QDialog):
         self.comboBox.addItems(["Player vs Player", "Player vs IA", "IA vs IA"])
         layout.addWidget(self.comboBox)
 
-        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttonBox = QDialogButtonBox()
+        self.okButton = self.buttonBox.addButton(QDialogButtonBox.Ok)
+        self.quitButton = self.buttonBox.addButton("Quitter", QDialogButtonBox.RejectRole)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
         layout.addWidget(self.buttonBox)
@@ -436,6 +520,33 @@ class ModeSelectionDialog(QDialog):
 
     def get_selected_mode(self):
         return self.comboBox.currentIndex()
+
+class ColorSelectionDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Choisissez votre couleur")
+        self.setFixedSize(QSize(300, 100))
+
+        layout = QVBoxLayout()
+
+        self.label = QLabel("Choisissez votre couleur:")
+        layout.addWidget(self.label)
+
+        self.colorComboBox = QComboBox()
+        self.colorComboBox.addItems(["Blanc", "Noir"])
+        layout.addWidget(self.colorComboBox)
+
+        self.buttonBox = QDialogButtonBox()
+        self.okButton = self.buttonBox.addButton(QDialogButtonBox.Ok)
+        self.backToMenuButton = self.buttonBox.addButton("Retour au menu", QDialogButtonBox.RejectRole)
+        self.buttonBox.accepted.connect(self.accept)
+        self.buttonBox.rejected.connect(self.reject)
+        layout.addWidget(self.buttonBox)
+
+        self.setLayout(layout)
+
+    def get_selected_color(self):
+        return self.colorComboBox.currentText()
 
 if __name__ == "__main__":
     import sys
@@ -449,10 +560,21 @@ if __name__ == "__main__":
     if dialog.exec_() == QDialog.Accepted:
         mode = dialog.get_selected_mode()
 
+        if mode == 1:  # Player vs IA
+            color_dialog = ColorSelectionDialog()
+            if color_dialog.exec_() == QDialog.Accepted:
+                player_color = color_dialog.get_selected_color()
+            else:
+                sys.exit()
+
+        else:
+            player_color = "Blanc"  # Default color for other modes
+
         player1 = Player(0, WHITE_PAWN)
         player2 = Player(1, BLACK_PAWN)
         board = Board(player1, player2)
 
-        window = GameWindow(board, mode)
+        window = GameWindow(board, mode, player_color)
         window.show()
+        window.update_board()  # Mettre à jour le plateau dès le lancement du jeu
         sys.exit(app.exec_())
