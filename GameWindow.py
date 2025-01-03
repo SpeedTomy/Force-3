@@ -19,6 +19,8 @@ class GameWindow(QMainWindow):
         self.move_square_button = None
         self.back_to_menu_button = None  # Bouton pour revenir au menu
         self.next_step_button = None  # Bouton pour avancer d'une étape en mode IA vs IA
+        self.square_moves_count = 0  # Counter for square moves
+        self.two_square_move_cooldown = False  # Cooldown flag for two-square moves
         self.initUI()
 
         if self.mode == 2:  # IA vs IA
@@ -106,6 +108,9 @@ class GameWindow(QMainWindow):
         return "Blanc" if self.current_player == 0 else "Noir"
 
     def select_action(self, action):
+        if self.two_square_move_cooldown and action == "Déplacer 2 carrés":
+            QMessageBox.information(self, "Info", "Vous ne pouvez pas déplacer 2 carrés ce tour-ci.")
+            return
         self.selected_action = action
         if action == "Déplacer 2 carrés":
             # Show two-square button only if board allows them
@@ -113,6 +118,7 @@ class GameWindow(QMainWindow):
                 QMessageBox.information(self, "Info", "Vous ne pouvez pas déplacer 2 carrés maintenant.")
                 return
             self.selected_squares.clear()
+            self.disable_action_buttons()
         else:
             self.remaining_moves = 1 if action != "Déplacer un carré" else 2 if self.board.isMove2SquarePawnsPossible() else 1
         if action in ["Déplacer un carré", "Déplacer 2 carrés"]:
@@ -192,7 +198,8 @@ class GameWindow(QMainWindow):
                 winner = self.board.checkIfWinner()
                 if winner != -1:
                     QMessageBox.information(self, "Victoire", f"Joueur {winner + 1} a gagné !")
-                    self.reset_game()
+                    self.close()  # Close the current window
+                    self.restart_application()  # Restart application to return to the menu
                 else:
                     # Change de joueur
                     self.board.endTurn()  # Réduire le cooldown à la fin du tour
@@ -228,7 +235,8 @@ class GameWindow(QMainWindow):
                     winner = self.board.checkIfWinner()
                     if winner != -1:
                         QMessageBox.information(self, "Victoire", f"Joueur {winner + 1} a gagné !")
-                        self.reset_game()
+                        self.close()  # Close the current window
+                        self.restart_application()  # Restart application to return to the menu
                     else:
                         # Change de joueur
                         self.board.endTurn()  # Réduire le cooldown à la fin du tour
@@ -257,7 +265,8 @@ class GameWindow(QMainWindow):
                 winner = self.board.checkIfWinner()
                 if winner != -1:
                     QMessageBox.information(self, "Victoire", f"Joueur {winner + 1} a gagné !")
-                    self.reset_game()
+                    self.close()  # Close the current window
+                    self.restart_application()  # Restart application to return to the menu
                 else:
                     self.board.endTurn()  # Réduire le cooldown à la fin du tour
                     self.current_player = 1 - self.current_player
@@ -285,27 +294,34 @@ class GameWindow(QMainWindow):
                 elif len(self.selected_squares) == 2:
                     sx = [self.selected_squares[0][0], self.selected_squares[1][0]]
                     sy = [self.selected_squares[0][1], self.selected_squares[1][1]]
-                    print(f"Trying to move squares: {sx}, {sy}")  # Debugging line
-                    result = self.board.move2SquarePawns(sx, sy)
-                    print(f"Result of move2SquarePawns: {result}")  # Debugging line
+                    result = self.board.moveSquarePawn(sx[0], sy[0])
                     if result == 0:
                         self.update_board()
                         self.clear_highlight()
-                        self.selected_action = None
-                        self.update_action_buttons()
-                        # Check winner
-                        winner = self.board.checkIfWinner()
-                        if winner != -1:
-                            QMessageBox.information(self, "Victoire", f"Joueur {winner + 1} a gagné !")
-                            self.reset_game()
-                        else:
-                            self.board.endTurn()  # Réduire le cooldown à la fin du tour
+                        self.selected_squares = [(sx[1], sy[1])]
+                        self.square_moves_count += 1
+                        self.highlight_all_movable_squares()
+                        possible_second_moves = self.board.getAllMovableSquares()
+                        if (sx[1], sy[1]) in possible_second_moves:
+                            possible_second_moves.remove((sx[1], sy[1]))
+                        for (xx, yy) in possible_second_moves:
+                            self.buttons[(xx, yy)].setStyleSheet("background-color: green;")
+                        if not possible_second_moves or self.square_moves_count == 2:
+                            self.disable_action_buttons()
+                            self.selected_action = None
+                            self.update_action_buttons()
+                            self.board.endTurn()
                             self.current_player = 1 - self.current_player
                             self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
+                            self.square_moves_count = 0  # Reset counter
+                            self.two_square_move_cooldown = True  # Set cooldown
+                            self.clear_highlight()  # Clear highlight when switching to the next player
+                            self.enable_action_buttons()  # Re-enable action buttons for the next player
                             if self.mode == 1 and self.current_player == self.ia_player:
                                 self.ia_play()
                     else:
-                        QMessageBox.warning(self, "Erreur", f"Déplacement de 2 carrés invalide ! Vérifiez la fonction move2SquarePawns. Code d'erreur: {result}")
+                        QMessageBox.warning(self, "Erreur", "Déplacement de carré invalide !")
+                        self.update_board()
                     self.selected_squares.clear()
             else:
                 QMessageBox.information(self, "Info", "Veuillez sélectionner un carré.")
@@ -330,7 +346,8 @@ class GameWindow(QMainWindow):
             winner = self.board.checkIfWinner()
             if winner != -1:
                 QMessageBox.information(self, "Victoire", f"Joueur {winner + 1} a gagné !")
-                self.reset_game()
+                self.close()  # Close the current window
+                self.restart_application()  # Restart application to return to the menu
             else:
                 # Change de joueur
                 self.board.endTurn()  # Réduire le cooldown à la fin du tour
@@ -343,12 +360,15 @@ class GameWindow(QMainWindow):
         winner = self.board.checkIfWinner()
         if winner != -1:
             QMessageBox.information(self, "Victoire", f"Joueur {winner + 1} a gagné !")
-            self.reset_game()
+            self.close()  # Close the current window
+            self.restart_application()  # Restart application to return to the menu
         else:
             self.current_player = 1 - self.current_player
             self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
             if self.mode == 1 and self.current_player == self.ia_player:
                 self.ia_play()
+        self.clear_highlight()  # Clear highlight when IA plays
+        self.enable_action_buttons()  # Re-enable action buttons when IA plays
 
     def ia_vs_ia_step(self):
         """
@@ -360,10 +380,13 @@ class GameWindow(QMainWindow):
             winner = self.board.checkIfWinner()
             if winner != -1:
                 QMessageBox.information(self, "Victoire", f"Joueur {winner + 1} a gagné !")
-                self.reset_game()
+                self.close()  # Close the current window
+                self.restart_application()  # Restart application to return to the menu
             else:
                 self.current_player = 1 - self.current_player
                 self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
+        self.clear_highlight()  # Clear highlight when IA vs IA step occurs
+        self.enable_action_buttons()  # Re-enable action buttons when IA vs IA step occurs
 
     def highlight_possible_moves(self, x, y):
         possible_moves = self.board.getValidCircularMoves(x, y)
@@ -387,32 +410,6 @@ class GameWindow(QMainWindow):
     def clear_highlight(self):
         for btn in self.buttons.values():
             btn.setStyleSheet("background-color: none;")
-
-    def reset_game(self):
-        """
-        Réinitialise le plateau et l'état du jeu après une victoire.
-        """
-        from Board import Board
-        from Player import Player
-        from Constants import WHITE_PAWN, BLACK_PAWN
-
-        # Réinitialise les joueurs et le plateau
-        player1 = Player(0, WHITE_PAWN)
-        player2 = Player(1, BLACK_PAWN)
-        self.board = Board(player1, player2)
-
-        # Met à jour l'interface
-        self.update_board()
-        self.current_player = 0
-        self.current_player_label.setText(f"Joueur actuel: {self.get_player_color()}")
-
-        # Réinitialise les boutons d'action
-        self.selected_action = None
-        self.update_action_buttons()
-        self.place_pawn_button.show()
-        self.move_pawn_button.hide()
-        self.move_square_button.hide()
-        self.move_two_squares_button.hide()
 
     def update_board(self):
         state = self.board.get_board_state()
@@ -445,6 +442,21 @@ class GameWindow(QMainWindow):
                 self.move_square_button.show()
             if len(self.board.players[0].pawns) >= 3:
                 self.place_pawn_button.hide()
+        self.two_square_move_cooldown = False  # Reset cooldown at the start of each turn
+        self.clear_highlight()  # Clear highlight when updating the board
+        self.enable_action_buttons()  # Re-enable action buttons when updating the board
+
+    def disable_action_buttons(self):
+        self.place_pawn_button.setEnabled(False)
+        self.move_pawn_button.setEnabled(False)
+        self.move_square_button.setEnabled(False)
+        self.move_two_squares_button.setEnabled(False)
+
+    def enable_action_buttons(self):
+        self.place_pawn_button.setEnabled(True)
+        self.move_pawn_button.setEnabled(True)
+        self.move_square_button.setEnabled(True)
+        self.move_two_squares_button.setEnabled(True)
 
     def back_to_menu(self):
         """
@@ -485,7 +497,7 @@ class GameWindow(QMainWindow):
             self.window.show()
             self.window.update_board()  # Mettre à jour le plateau dès le lancement du jeu
         else:
-            self.restart_application()  # Retourne au menu principal si l'utilisateur clique sur "Quitter" dans la boîte de dialogue de sélection de mode
+            self.quit_application()  # Quitte l'application si l'utilisateur clique sur "Quitter" dans la boîte de dialogue de sélection de mode
 
     def quit_application(self):
         """
